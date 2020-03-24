@@ -1,46 +1,53 @@
 import json
-import time
-import asyncio
-import websockets
 import requests
 import pendulum
-import os
-import pandas as pd
-import copy
 
-from influxdb import InfluxDBClient
+
 
 # Configure the data scrapping here in the template
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+URL = "http://localhost:9999"
+ORG = "US"
+TOKEN = "zDxSwoznrqSipuTs2VJfrOJl-e2twnCKsraGd-K_4YKUY0c_EB9fb341_kCi0lQqz9dUx_yWYGKUqiZaI2cGOA=="
+BUCKET = 'REE'
+
 INPUT_TEMPLATE_DEMANDA_1 = {
     "request_type": "DEMANDA",
     "request_subtype": "Demanda real",
     "start_date": [2017, 1, 1, 0],
-    "end_date": [2020, 2, 2, 0],
-    "time_trunc": "hour"
+    "end_date": [2019, 12, 31, 0],
+    "time_trunc": "hour",
+    "measurement_unit": "KWh"
 }
 
 INPUT_TEMPLATE_DEMANDA_2 = {
     "request_type": "DEMANDA",
     "request_subtype": "Demanda prevista",
     "start_date": [2017, 1, 1, 0],
-    "end_date": [2020, 2, 2, 0],
-    "time_trunc": "hour"
+    "end_date": [2019, 12, 31, 0],
+    "time_trunc": "hour",
+    "measurement_unit": "KWh"
 }
 
 INPUT_TEMPLATE_PRECIOS_1 = {
     "request_type": "PRECIOS",
     "request_subtype": "PVPC (€/MWh)",
     "start_date": [2017, 1, 1, 0],
-    "end_date": [2020, 2, 2, 0],
-    "time_trunc": "hour"
+    "end_date": [2019, 12, 31, 0],
+    "time_trunc": "hour",
+    "measurement_unit": "€/MWh"
+
 }
 
 INPUT_TEMPLATE_PRECIOS_2 = {
     "request_type": "PRECIOS",
     "request_subtype": "Precio mercado spot (€/MWh)",
     "start_date": [2017, 1, 1, 0],
-    "end_date": [2020, 2, 2, 0],
-    "time_trunc": "hour"
+    "end_date": [2019, 12, 31, 0],
+    "time_trunc": "hour",
+    "measurement_unit": "€/MWh"
 }
 
 HTTP_API_URI = 'https://apidatos.ree.es/es/datos/'
@@ -53,7 +60,7 @@ REQUEST_TYPE = {'DEMANDA': {"Demanda real": 0, "Demanda programada": 1, "Demanda
 DATA_LIMIT = 600
 
 insertion_template = {
-    'measurement': '',
+    'measurement': 'CONSUMO',
     'time': '',
     'fields': {
         'value': 0
@@ -68,17 +75,19 @@ insertion_template = {
 # https://www.ree.es/es/apidatos
 #
 
-def get_data_by_date_range(influxdb_client, request_type, request_subtype, start_date, end_date, time_trunc='hour', store=True):
+def get_data_by_date_range(request_type, request_subtype,measurement_unit, start_date, end_date, time_trunc='hour', store=True):
     """
     Get historical data for specific type and time frame between to date.
     """
-    # Create an empty list that will contain all data
+    print(request_type,request_subtype)
     start_date = pendulum.create(*start_date)
     end_date = pendulum.create(*end_date)
-    insertion_template['measurement'] = request_type
-    insertion_template['tags']['type'] = request_subtype
+    insertion_template['tags'][request_type] = request_subtype
     next_date = start_date.add(hours=DATA_LIMIT)
     finished = False
+
+    if store:
+        client = connect()
 
     # Loop between two dates
     while not finished:
@@ -93,7 +102,11 @@ def get_data_by_date_range(influxdb_client, request_type, request_subtype, start
         response = response['included'][REQUEST_TYPE[request_type][request_subtype]]['attributes']['values']
         print("Va a cargarse hasta:" + response[0]['datetime'])
         # Data storage
-        influxdb_client.write_points(serialize_points(response), database=DATABASE)
+        points = serialize_points(response,request_type,measurement_unit,request_subtype)
+        write_api = client.write_api(write_options=SYNCHRONOUS)
+
+        write_api.write(bucket=BUCKET, org=ORG, record=points)
+
         # Update date for next iteration
         start_date = start_date.add(hours=DATA_LIMIT)
         next_date = next_date.add(hours=DATA_LIMIT)
@@ -114,14 +127,11 @@ def parse_time(dt):
         return e
 
 
-def serialize_points(response):
+def serialize_points(response, request_type, request_subtype, measurement_unit):
     points = []
     for i, tick in enumerate(response):
-        template = copy.deepcopy(insertion_template)
-
-        template['time'] = tick['datetime']
-        template['fields']['value'] = float(tick['value'])
-        points.append(template)
+        point = Point(measurement_unit).field(request_subtype, float(tick['value'])).time(tick['datetime'])
+        points.append(point)
     # Return True is operation is successful
     return points
 
@@ -130,18 +140,14 @@ def connect():
     """
     Connect to InfluxDB.
     """
-    host = os.getenv('INFLUXDB_HOST', "localhost")
-    port = os.getenv('INFLUXDB_PORT', 8086)
-    use_ssl = os.getenv('INFLUXDB_USE_SSL', False)
-    verify_ssl = os.getenv('INFLUXDB_VERIFY_SSL', False)
-    username = os.getenv('INFLUXDB_USERNAME', None)
-    password = os.getenv('INFLUXDB_PASSWORD', None)
-    database = os.getenv('INFLUXDB_DATABASE', "REE")
-
-    params = (host, port, username, password, database, use_ssl, verify_ssl)
     try:
         print('Connection to InfluxDB...')
-        client = InfluxDBClient(*params)
+        client = InfluxDBClient(
+            url=URL,
+            token=TOKEN,
+            org=ORG
+        )
+
     except Exception as e:
         print('Could not connect to InfluxDB.', e)
         return e
@@ -151,7 +157,8 @@ def connect():
 
 
 if __name__ == '__main__':
-    influxdb_client = connect()
-    get_data_by_date_range(influxdb_client, **INPUT_TEMPLATE_DEMANDA_2)
-    get_data_by_date_range(influxdb_client, **INPUT_TEMPLATE_PRECIOS_1)
-    get_data_by_date_range(influxdb_client, **INPUT_TEMPLATE_PRECIOS_2)
+    get_data_by_date_range(**INPUT_TEMPLATE_PRECIOS_1)
+    get_data_by_date_range(**INPUT_TEMPLATE_PRECIOS_2)
+    get_data_by_date_range(**INPUT_TEMPLATE_DEMANDA_2)
+    get_data_by_date_range(**INPUT_TEMPLATE_DEMANDA_1)
+
