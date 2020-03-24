@@ -3,8 +3,11 @@ import requests
 import pendulum
 
 
+#
+# REE Values
+# https://www.ree.es/es/apidatos
+#
 
-# Configure the data scrapping here in the template
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
@@ -13,13 +16,14 @@ ORG = "US"
 TOKEN = "zDxSwoznrqSipuTs2VJfrOJl-e2twnCKsraGd-K_4YKUY0c_EB9fb341_kCi0lQqz9dUx_yWYGKUqiZaI2cGOA=="
 BUCKET = 'REE'
 
+# Configure the data scrapping here in the template
 INPUT_TEMPLATE_DEMANDA_1 = {
     "request_type": "DEMANDA",
     "request_subtype": "Demanda real",
     "start_date": [2017, 1, 1, 0],
     "end_date": [2019, 12, 31, 0],
     "time_trunc": "hour",
-    "measurement_unit": "KWh"
+    "measurement_unit": "MWh"
 }
 
 INPUT_TEMPLATE_DEMANDA_2 = {
@@ -28,7 +32,7 @@ INPUT_TEMPLATE_DEMANDA_2 = {
     "start_date": [2017, 1, 1, 0],
     "end_date": [2019, 12, 31, 0],
     "time_trunc": "hour",
-    "measurement_unit": "KWh"
+    "measurement_unit": "MWh"
 }
 
 INPUT_TEMPLATE_PRECIOS_1 = {
@@ -50,6 +54,7 @@ INPUT_TEMPLATE_PRECIOS_2 = {
     "measurement_unit": "€/MWh"
 }
 
+#Information auxiliary Dicts with params
 HTTP_API_URI = 'https://apidatos.ree.es/es/datos/'
 DATABASE = "REE"
 REQUEST_TYPE_URL = {'DEMANDA': 'demanda/demanda-tiempo-real',
@@ -59,22 +64,6 @@ REQUEST_TYPE = {'DEMANDA': {"Demanda real": 0, "Demanda programada": 1, "Demanda
                 'PRECIOS': {"PVPC (€/MWh)": 0, "Precio mercado spot (€/MWh)": 1}}
 DATA_LIMIT = 600
 
-insertion_template = {
-    'measurement': 'CONSUMO',
-    'time': '',
-    'fields': {
-        'value': 0
-    },
-    'tags': {
-    }
-}
-
-
-#
-# REE Values
-# https://www.ree.es/es/apidatos
-#
-
 def get_data_by_date_range(request_type, request_subtype,measurement_unit, start_date, end_date, time_trunc='hour', store=True):
     """
     Get historical data for specific type and time frame between to date.
@@ -82,7 +71,6 @@ def get_data_by_date_range(request_type, request_subtype,measurement_unit, start
     print(request_type,request_subtype)
     start_date = pendulum.create(*start_date)
     end_date = pendulum.create(*end_date)
-    insertion_template['tags'][request_type] = request_subtype
     next_date = start_date.add(hours=DATA_LIMIT)
     finished = False
 
@@ -100,11 +88,11 @@ def get_data_by_date_range(request_type, request_subtype,measurement_unit, start
         json_response = requests.get(url)
         response = json.loads(json_response.text)
         response = response['included'][REQUEST_TYPE[request_type][request_subtype]]['attributes']['values']
-        print("Va a cargarse hasta:" + response[0]['datetime'])
+        print("Situacion temporal: " + response[0]['datetime'])
+
         # Data storage
         points = serialize_points(response,request_type,measurement_unit,request_subtype)
         write_api = client.write_api(write_options=SYNCHRONOUS)
-
         write_api.write(bucket=BUCKET, org=ORG, record=points)
 
         # Update date for next iteration
@@ -128,6 +116,7 @@ def parse_time(dt):
 
 
 def serialize_points(response, request_type, request_subtype, measurement_unit):
+    print(response)
     points = []
     for i, tick in enumerate(response):
         point = Point(measurement_unit).field(request_subtype, float(tick['value'])).time(tick['datetime'])
