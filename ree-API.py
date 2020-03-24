@@ -116,7 +116,6 @@ def parse_time(dt):
 
 
 def serialize_points(response, request_type, request_subtype, measurement_unit):
-    print(response)
     points = []
     for i, tick in enumerate(response):
         point = Point(measurement_unit).field(request_subtype, float(tick['value'])).time(tick['datetime'])
