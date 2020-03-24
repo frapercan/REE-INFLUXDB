@@ -40,8 +40,8 @@ INPUT_TEMPLATE_PRECIOS_1 = {
     "measurement_unit": "€/MWh"  }
 </code></pre>
 <h1 id="ejemplo-de-uso">Ejemplo de uso:</h1>
-<p>Bien desde el IDE, bien desde consola ejecutamos el fichero <a href="http://ree-API.py">ree-API.py</a>. Si todo está correctamente configurado, influxdb est corriendo y se cumplen las dependencias.</p>
-<p>Configuramos la ventana de tiempo para visualizar los datos de 2017,2018 y 2019, ya que en caso contrario no aparecería nada.</p>
+<p>Bien desde el IDE, bien desde consola ejecutamos el fichero <a href="http://ree-API.py">ree-API.py</a>. Si se cumplen las dependencias, InfluxDB está corriendo y las credenciales de acceso al contenedor está correctamente configurado, podremos acceder al explorador de datos y ver como se alimenta la base de datos en tiempo real.</p>
+<p>Para eso configuramos la ventana de tiempo para visualizar los datos de 2017,2018 y 2019, ya que en caso contrario no aparecería nada.</p>
 <p>Visualizamos los dos tipos de precios:<br>
 <img src="https://raw.githubusercontent.com/frapercan/REE-INFLUXDB/master/img/precio.png" alt="Precio"></p>
 <p>Visualizamos la demanda:<br>
