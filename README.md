@@ -47,3 +47,5 @@ INPUT_TEMPLATE_PRECIOS_1 = {
 <p>Visualizamos la demanda:<br>
 <img src="https://raw.githubusercontent.com/frapercan/REE-INFLUXDB/master/img/demanda.png" alt="enter image description here"></p>
 
+Seguimos con nuestroe experimento estudio:
+https://www.kaggle.com/xaxipirulazo/precio-y-demanda-de-ree-estudio-y-predicci-n
