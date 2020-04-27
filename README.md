@@ -46,6 +46,6 @@ INPUT_TEMPLATE_PRECIOS_1 = {
 <img src="https://raw.githubusercontent.com/frapercan/REE-INFLUXDB/master/img/precio.png" alt="Precio"></p>
 <p>Visualizamos la demanda:<br>
 <img src="https://raw.githubusercontent.com/frapercan/REE-INFLUXDB/master/img/demanda.png" alt="enter image description here"></p>
+<h2 id="el-estudio-sigue-en-el-siguiente-cuaderno-interactivo">El estudio sigue en el siguiente cuaderno interactivo</h2>
+<p><a href="Seguimos%20con%20nuestroe%20experimento%20estudio:%20https://www.kaggle.com/xaxipirulazo/precio-y-demanda-de-ree-estudio-y-predicci-n">kaggle jupyter</a></p>
 
-Seguimos con nuestroe experimento estudio:
-https://www.kaggle.com/xaxipirulazo/precio-y-demanda-de-ree-estudio-y-predicci-n
